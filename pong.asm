@@ -14,7 +14,7 @@ main:
 
     ; a completely useless something
 .loop_forever_main:                             ; have main print for eternity
-    mov     dx, 5
+    mov     dx, 25
     call    yield                               ; we are done printing, let another task know they can print
     jmp     .loop_forever_main
     ; does not terminate or return
@@ -139,13 +139,7 @@ print_screen:
     call    print_score
     call    print_players
     call    print_ball
-
-    mov     ah, 0x0                 ; wait for user input
-    int     0x16
-
-    mov     ah, 0x4c                ; exit
-    mov     al, 0
-    int     0x21
+    ret
 
 global print_score
 print_score:
@@ -257,6 +251,7 @@ SECTION .data
     ball_dx: dw 1               ; {-2, -1, 0, 1, 2}
     ball_dy: dw 1               ; {-4, -2, 0, 2, 4}
     comput_paddle_loc: dw 15    ; [0, 22]
+
 
     current_task: dw 0          ; must always be a multiple of 2
     stacks: times (256 * 31) db 0 ; 31 fake stacks of size 256 bytes
