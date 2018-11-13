@@ -71,6 +71,51 @@ print_ball:
     mov     word [es: bx], 0x07db   ; print (x, y)
     ret
 
+; just update the paddles for now.
+; somewhat addapted from https://stackoverflow.com/questions/13143774/how-to-read-key-without-waiting-for-it-assembly-8086
+global update_game
+update_game:
+    mov ah, 01h                     ; checks if a key is pressed
+    int 16h
+    jnz process_key                 ; 0 == not-pressed
+    ret
+
+    mov ah, 00h                     ; get the keystroke
+    int 16h
+
+process_key:
+    cmp     al, 87              ; w
+    jne     w_not_pressed
+    mov     dx, [player_paddle_loc]
+    sub     dx, 1
+    mov     [player_paddle_loc], dx
+    jmp     end_update
+w_not_pressed:
+    cmp al, 83                  ; s
+    jne s_not_pressed
+    mov     dx, [player_paddle_loc]
+    add     dx, 1
+    mov     [player_paddle_loc], dx
+    jmp     end_update
+s_not_pressed:
+    cmp     al, 81              ; q
+    jne     q_not_pressed
+    mov     dx, [comput_paddle_loc]
+    sub     dx, 1
+    mov     [comput_paddle_loc], dx
+    jmp     end_update
+q_not_pressed:
+    cmp     al, 65              ; a
+    jne     a_not_pressed
+    mov     dx, [player_paddle_loc]
+    sub     dx, 1
+    mov     [player_paddle_loc], dx
+    jmp     end_update
+a_not_pressed:
+
+end_update:
+    ret                     ; at the very least.
+
 
 
 SECTION .data

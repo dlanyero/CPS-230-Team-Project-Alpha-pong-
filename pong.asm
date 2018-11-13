@@ -12,9 +12,9 @@ main:
     lea     di, [task_b]                        ; create task b
     call    spawn_new_task
 
+    ; a completely useless something
 .loop_forever_main:                             ; have main print for eternity
-    lea     di, [task_main_str]
-    call    putstring
+    mov     dx, 5
     call    yield                               ; we are done printing, let another task know they can print
     jmp     .loop_forever_main
     ; does not terminate or return
@@ -85,16 +85,14 @@ yield:
 
 task_a:
 .loop_forever_1:
-    lea     di, [task_a_str]
-    call    putstring
+    call    update_game
     call    yield
     jmp     .loop_forever_1
     ; does not terminate or return
 
 task_b:
 .loop_forever_2:
-    lea     di, [task_b_str]
-    call    putstring
+    call    print_screen
     call    yield
     jmp     .loop_forever_2
     ; does not terminate or return
@@ -200,25 +198,60 @@ print_ball:
 
 
 
-
-
-    ; function body goes here
-
-    mov    ax, [return value]
-    ; remove local variables (if not using mov sp, bp to do so)
-    ret
-
-
 ; need a function to move the ball one place.
 ; if the ball hits a wall, then check what wall it is.
 ; if it's the wall on the back side, then end the game.
 ; if it's a top or bottom wall, then just change the y direction.
 ; if it hits a paddle, change the x or y appriately.
 ; . . . this is the hard function.
+; just update the paddles for now.
+; somewhat addapted from https://stackoverflow.com/questions/13143774/how-to-read-key-without-waiting-for-it-assembly-8086
+global update_game
+update_game:
+    mov ah, 01h                     ; checks if a key is pressed
+    int 16h
+    jnz process_key                 ; 0 == not-pressed
+    ret
+
+    mov ah, 00h                     ; get the keystroke
+    int 16h
+
+process_key:
+    cmp     al, 87              ; w
+    jne     w_not_pressed
+    mov     dx, [player_paddle_loc]
+    sub     dx, 1
+    mov     [player_paddle_loc], dx
+    jmp     end_update
+w_not_pressed:
+    cmp al, 83                  ; s
+    jne s_not_pressed
+    mov     dx, [player_paddle_loc]
+    add     dx, 1
+    mov     [player_paddle_loc], dx
+    jmp     end_update
+s_not_pressed:
+    cmp     al, 81              ; q
+    jne     q_not_pressed
+    mov     dx, [comput_paddle_loc]
+    sub     dx, 1
+    mov     [comput_paddle_loc], dx
+    jmp     end_update
+q_not_pressed:
+    cmp     al, 65              ; a
+    jne     a_not_pressed
+    mov     dx, [player_paddle_loc]
+    sub     dx, 1
+    mov     [player_paddle_loc], dx
+    jmp     end_update
+a_not_pressed:
+
+end_update:
+    ret                     ; at the very least.
 
 SECTION .data
     player_paddle_loc: dw 12    ; [0, 22]
-    score: dw 2                 ; start score at 2 [0, 9]
+    score: dw 5                 ; start score at 2 [0, 9]
     ball_x: dw 40               ; even element of [0, 78]
     ball_y: dw 8                ; [0, 23]
     ball_dx: dw 1               ; {-2, -1, 0, 1, 2}
