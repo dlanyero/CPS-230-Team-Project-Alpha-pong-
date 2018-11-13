@@ -211,31 +211,34 @@ update_game:
     int 16h
 
 process_key:
-    cmp     al, 87              ; w
+    mov ah, 00h                     ; get the keystroke
+    int 16h
+
+    cmp     al, 119              ; w
     jne     w_not_pressed
-    mov     dx, [player_paddle_loc]
-    sub     dx, 1
-    mov     [player_paddle_loc], dx
-    jmp     end_update
-w_not_pressed:
-    cmp al, 83                  ; s
-    jne s_not_pressed
-    mov     dx, [player_paddle_loc]
-    add     dx, 1
-    mov     [player_paddle_loc], dx
-    jmp     end_update
-s_not_pressed:
-    cmp     al, 81              ; q
-    jne     q_not_pressed
     mov     dx, [comput_paddle_loc]
     sub     dx, 1
     mov     [comput_paddle_loc], dx
     jmp     end_update
-q_not_pressed:
-    cmp     al, 65              ; a
-    jne     a_not_pressed
+w_not_pressed:
+    cmp     al, 115              ; s
+    jne     s_not_pressed
+    mov     dx, [comput_paddle_loc]
+    add     dx, 1
+    mov     [comput_paddle_loc], dx
+    jmp     end_update
+s_not_pressed:
+    cmp     al, 113              ; q
+    jne     q_not_pressed
     mov     dx, [player_paddle_loc]
     sub     dx, 1
+    mov     [player_paddle_loc], dx
+    jmp     end_update
+q_not_pressed:
+    cmp     al, 97              ; a
+    jne     a_not_pressed
+    mov     dx, [player_paddle_loc]
+    add     dx, 1
     mov     [player_paddle_loc], dx
     jmp     end_update
 a_not_pressed:
@@ -252,6 +255,7 @@ SECTION .data
     ball_dy: dw 1               ; {-4, -2, 0, 2, 4}
     comput_paddle_loc: dw 15    ; [0, 22]
 
+    task_main_str: db "I am task MAIN", 13, 10, 0
 
     current_task: dw 0          ; must always be a multiple of 2
     stacks: times (256 * 31) db 0 ; 31 fake stacks of size 256 bytes
