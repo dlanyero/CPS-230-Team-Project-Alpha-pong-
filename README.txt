@@ -13,5 +13,23 @@ Problems:
 | Teammate | Hours | 
 |----------|-------|
 | Jeremiah |  5.5  | 
-| Dorcus   |   ?   | 
+| Dorcas   |       |
+
+#Pong-v beta
+
+Features:
+   - Bootloader which loads the program(pong.asm) from sector 2 through 6
+   - priting team names.
+   - floppy-disk image created.	
+Problems:
+    -Does not prompt for a character before running the kennel.
+| Teammate | Hours | 
+|----------|-------|
+| Jeremiah |  ?    | 
+| Dorcas   |   3   |
+
+    
+
+
+ 
 

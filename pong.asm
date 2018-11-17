@@ -1,11 +1,17 @@
 bits 16
 
-org 0x100
+org 0
 
 SECTION .text
 main:
+	mov ax, cs
+	mov ds, ax
     mov     byte [task_status], 1               ; set main task to active
 
+	mov     ah, 0x0
+    mov     al, 0x1
+    int     0x10                    ; set video to text mode
+	
     lea     di, [task_a]                        ; create task a
     call    spawn_new_task
 
@@ -36,7 +42,7 @@ spawn_new_task:
     cmp     word [bx], 0
     je      .sp_is_available
     add     cx, 2                               ; next stack to search
-    and     cx, 0x2F                            ; make sure stack to search is always less than 64
+    and     cx, 0x0F                            ; make sure stack to search is always less than 64
     jmp     .sp_loop_for_available_stack
 .sp_is_available:
     lea     bx, [task_status]                   ; we found a stack, set it to active
@@ -71,7 +77,7 @@ yield:
     cmp     word [bx], 1
     je      .y_task_available
     add     cx, 2                               ; next stack to search
-    and     cx, 0x2F                            ; make sure stack to search is always less than 64
+    and     cx, 0x0F                            ; make sure stack to search is always less than 64
     jmp     .y_check_if_enabled
 .y_task_available:
     mov     bx, cx
@@ -131,10 +137,6 @@ print_screen:
     mov     ax, 0xB800
     mov     es, ax                  ; moving directly into a segment register is not allowed
     mov     bx, 80                 ; offset for approximately the middle of the screen
-
-    mov     ah, 0x0
-    mov     al, 0x1
-    int     0x10                    ; set video to text mode
 
     call    print_score
     call    print_players
@@ -258,8 +260,8 @@ SECTION .data
     task_main_str: db "I am task MAIN", 13, 10, 0
 
     current_task: dw 0          ; must always be a multiple of 2
-    stacks: times (256 * 31) db 0 ; 31 fake stacks of size 256 bytes
-    task_status: times 32 dw 0  ; 0 means inactive, 1 means active
+    stacks: times (256 * 8) db 0 ; 31 fake stacks of size 256 bytes
+    task_status: times 8 dw 0  ; 0 means inactive, 1 means active
     stack_pointers: dw 0        ; the first pointer needs to be to the real stack !
                     dw stacks + (256 * 1)
                     dw stacks + (256 * 2)
@@ -268,27 +270,3 @@ SECTION .data
                     dw stacks + (256 * 5)
                     dw stacks + (256 * 6)
                     dw stacks + (256 * 7)
-                    dw stacks + (256 * 8)
-                    dw stacks + (256 * 9)
-                    dw stacks + (256 * 10)
-                    dw stacks + (256 * 11)
-                    dw stacks + (256 * 12)
-                    dw stacks + (256 * 13)
-                    dw stacks + (256 * 14)
-                    dw stacks + (256 * 15)
-                    dw stacks + (256 * 16)
-                    dw stacks + (256 * 17)
-                    dw stacks + (256 * 18)
-                    dw stacks + (256 * 19)
-                    dw stacks + (256 * 20)
-                    dw stacks + (256 * 21)
-                    dw stacks + (256 * 22)
-                    dw stacks + (256 * 23)
-                    dw stacks + (256 * 24)
-                    dw stacks + (256 * 25)
-                    dw stacks + (256 * 26)
-                    dw stacks + (256 * 27)
-                    dw stacks + (256 * 28)
-                    dw stacks + (256 * 29)
-                    dw stacks + (256 * 30)
-                    dw stacks + (256 * 31)
