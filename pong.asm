@@ -1,6 +1,6 @@
 bits 16
 
-org 0
+org 0x100
 
 SECTION .text
 main:
@@ -141,6 +141,10 @@ print_screen:
     call    print_score
     call    print_players
     call    print_ball
+
+	
+	inc word[ball_x]
+	dec word[ball_y]
     ret
 
 global print_score
@@ -188,11 +192,23 @@ print_ball:
     imul    ax, dx
     mov     bx, ax                  ; y
 
+	;dec bx
+	;cmp bx, 0
+	;je .reset_value_y
+	
+	
     add     bx, [ball_x]            ; x
+	;dec bx
+	;cmp bx, 0 
+	;je .reset_value_x
     mov     word [es: bx], 0x07db   ; print (x, y)
+	;dec ball_dx
     ret
-
-
+.reset_value_x:
+	mov bx, ball_x
+	
+.reset_value_y:
+	mov bx, ball_y
 
 ; need a function to move the ball one place.
 ; if the ball hits a wall, then check what wall it is.
@@ -225,7 +241,7 @@ process_key:
 w_not_pressed:
     cmp     al, 115              ; s
     jne     s_not_pressed
-    mov     dx, [comput_paddle_loc]
+    mov     dx, [comput_paddle_loc] ;So this is how you adjust stuff. You temprarily move it into a register and increament the register and them move it back to where is it supposed to be. 
     add     dx, 1
     mov     [comput_paddle_loc], dx
     jmp     end_update
