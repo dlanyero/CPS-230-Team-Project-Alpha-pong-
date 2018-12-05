@@ -141,11 +141,32 @@ print_screen:
     call    print_score
     call    print_players
     call    print_ball
-
+	call paint_screen_black
 	
-	inc word[ball_x]
+	cmp word[ball_x], 0
+	je reset1
+	dec word[ball_x]
+	cmp word[ball_y], 0
+	je reset2
 	dec word[ball_y]
-    ret
+	
+reset1:
+	mov word[ball_x] , 80
+reset2:
+	mov word[ball_y], 16
+
+global paint_screen_black
+paint_screen_black:
+	
+		xor     bx, bx
+	    jmp .clearing_screen
+.clearing_screen:
+    cmp bx, 4000 ; or however pixels you have * 2
+    jge .end_while
+    mov word [es:bx], 0
+    add bx, 2
+    jmp .clearing_screen
+.end_while:
 
 global print_score
 print_score:
