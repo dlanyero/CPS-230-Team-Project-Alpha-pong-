@@ -17,6 +17,9 @@ main:
 
     lea     di, [task_b]                        ; create task b
     call    spawn_new_task
+	
+	lea     di, [task_c]
+	call 	spawn_new_task
 
     ; a completely useless something
 .loop_forever_main:                             ; have main print for eternity
@@ -99,9 +102,15 @@ task_a:
 task_b:
 .loop_forever_2:
     call    print_screen
+	;call    Play_Sound
     call    yield
     jmp     .loop_forever_2
     ; does not terminate or return
+task_c:
+.loop_forever_3:
+	call  Play_Sound
+	call  yield
+	jmp  .loop_forever_3
 
 ; takes a char to print in dx
 ; no return value
@@ -284,6 +293,110 @@ a_not_pressed:
 
 end_update:
     ret                     ; at the very least.
+
+global Play_Sound
+Play_Sound:
+	jmp .play_B
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_B
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_B
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_B
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_B
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_B
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_D
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_G
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_A
+	;jmp .pause1
+	;jmp .pause2
+	jmp .play_B
+	;jmp .pause1
+	;jmp .pause2
+		
+.play_B:
+	mov     al, 182         ; Prepare the speaker for the
+        out     43h, al         ;  note.
+        mov     ax, 2415        ; Frequency number (in decimal)
+                                ;  for middle C.
+        out     42h, al         ; Output low byte.
+        mov     al, ah          ; Output high byte.
+        out     42h, al 
+        in      al, 61h         ; Turn on note (get value from
+                                ;  port 61h).
+        or      al, 00000011b   ; Set bits 1 and 0.
+        out     61h, al         ; Send new value.
+        mov     bx, 25 
+.pause1:
+        mov     cx, 65535
+.pause2:
+        dec     cx
+        jne     .pause2
+        dec     bx
+        jne     .pause1
+        in      al, 61h         ; Turn off note (get value from
+                                ;  port 61h).
+        and     al, 11111100b   ; Reset bits 1 and 0.
+        out     61h, al         ; Send new value.
+
+.play_D:
+	mov     al, 182         ; Prepare the speaker for the
+        out     43h, al         ;  note.
+        mov     ax, 2031       ; Frequency number (in decimal)
+                                ;  for middle C.
+        out     42h, al         ; Output low byte.
+        mov     al, ah          ; Output high byte.
+        out     42h, al 
+        in      al, 61h         ; Turn on note (get value from
+                                ;  port 61h).
+        or      al, 00000011b   ; Set bits 1 and 0.
+        out     61h, al         ; Send new value.
+        mov     bx, 25 
+
+.play_G:
+		mov     al, 182         ; Prepare the speaker for the
+        out     43h, al         ;  note.
+        mov     ax, 3043       ; Frequency number (in decimal)
+                                ;  for middle C.
+        out     42h, al         ; Output low byte.
+        mov     al, ah          ; Output high byte.
+        out     42h, al 
+        in      al, 61h         ; Turn on note (get value from
+                                ;  port 61h).
+        or      al, 00000011b   ; Set bits 1 and 0.
+        out     61h, al         ; Send new value.
+        mov     bx, 25 
+
+	
+
+.play_A:
+		mov     al, 182         ; Prepare the speaker for the
+        out     43h, al         ;  note.
+        mov     ax, 5423       ; Frequency number (in decimal)
+                                ;  for middle C.
+        out     42h, al         ; Output low byte.
+        mov     al, ah          ; Output high byte.
+        out     42h, al 
+        in      al, 61h         ; Turn on note (get value from
+                                ;  port 61h).
+        or      al, 00000011b   ; Set bits 1 and 0.
+        out     61h, al         ; Send new value.
+        mov     bx, 25 
+
+
 
 SECTION .data
     player_paddle_loc: dw 12    ; [0, 22]
