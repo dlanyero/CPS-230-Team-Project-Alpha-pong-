@@ -135,18 +135,76 @@ print_screen:
     call    print_players
     call    print_ball
     call    copy_to_screen
-    
-    cmp word[ball_x], 0
-    je reset1
-    dec word[ball_x]
-    cmp word[ball_y], 0
-    je reset2
-    dec word[ball_y]
-    
-reset1:
-    mov word[ball_x] , 80
-reset2:
-    mov word[ball_y], 16
+    cmp     word [ball_dir], 0
+    je      .ball_going_ne
+    cmp     word [ball_dir], 1
+    je      .ball_going_se
+    cmp     word [ball_dir], 2
+    je      .ball_going_sw
+    cmp     word [ball_dir], 3
+    je      .ball_going_nw
+    jmp     .unknown_dir
+.ball_going_ne:
+    inc     word [ball_x]
+    dec     word [ball_y]
+    jmp     .unknown_dir
+.ball_going_nw:
+    dec     word [ball_x]
+    dec     word [ball_y]
+    jmp     .unknown_dir
+.ball_going_se:
+    inc     word [ball_x]
+    inc     word [ball_y]
+    jmp     .unknown_dir
+.ball_going_sw:
+    dec     word [ball_x]
+    inc     word [ball_y]
+    jmp     .unknown_dir
+.unknown_dir:
+    cmp     word [ball_x], 0
+    je      .change_dir_left
+    cmp     word [ball_y], 0
+    je      .change_dir_top
+    cmp     word [ball_x], 79
+    jge     .change_dir_right
+    cmp     word [ball_y], 24
+    jge     .change_dir_bottom
+    ; TODO add detection logic for paddles here
+    jmp     .no_change_needed
+.change_dir_top:
+    cmp     word [ball_dir], 0
+    je      .go_se
+    jmp     .go_sw
+.change_dir_left:
+    cmp     word [ball_dir], 3
+    je      .go_se
+    jmp     .go_ne
+.change_dir_right:
+    cmp     word [ball_dir], 1
+    je      .go_nw
+    jmp     .go_sw
+.change_dir_bottom:
+    cmp     word [ball_dir], 2
+    je      .go_nw
+    jmp     .go_ne
+.go_ne:
+    mov     word [ball_dir], 0
+    jmp     .no_change_needed
+.go_se:
+    mov     word [ball_dir], 1
+    jmp     .no_change_needed
+.go_nw:
+    mov     word [ball_dir], 3
+    jmp     .no_change_needed
+.go_sw:
+    mov     word [ball_dir], 2
+    jmp     .no_change_needed
+.no_change_needed:
+    mov     ah, 0x86
+    mov     dx, 0
+    mov     cx, 5
+    int     0x15
+    ret
 global print_score
 print_score:
     mov     bx, 60                    ; you can assume that es has not been tampered with.
@@ -191,21 +249,12 @@ print_players:
     ret
 global print_ball
 print_ball:
-    mov     ax, 80                  ; multiplying to find the correct location to put the value.
+    mov     ax, 80                      ; multiplying to find the correct location to put the value.
     mov     dx, word [ball_y]
     imul    ax, dx
-    mov     bx, ax                  ; y
-    ;dec bx
-    ;cmp bx, 0
-    ;je .reset_value_y
-    
-    
-    add     bx, [ball_x]            ; x
-    ;dec bx
-    ;cmp bx, 0 
-    ;je .reset_value_x
-    mov     word [screen+bx], 0x07db   ; print (x, y)
-    ;dec ball_dx
+    mov     bx, ax                      ; y
+    add     bx, [ball_x]                ; x
+    mov     word [screen+bx], 0x07db    ; print (x, y)
     ret
 reset_drawing_array:
     mov     cx, 0
@@ -286,57 +335,62 @@ end_update:
 global Play_Sound
 Play_Sound:
     call play_B
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     call play_B
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     call play_B
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     call play_B
+    call mywait
     call yield
-	call waiting 
     ;jmp .pause1
     ;jmp .pause2
     call play_B
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     call play_B
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     call play_D
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     call play_G
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     call play_A
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     call play_B
+    call mywait
     call yield
-	call waiting
     ;jmp .pause1
     ;jmp .pause2
     ret
-        
+mywait:
+        mov     ah, 0x86
+        mov     dx, 0
+        mov     cx, 5
+        int     0x15
+        ret
 play_B:
         mov     al, 182         ; Prepare the speaker for the
         out     43h, al         ;  note.
@@ -351,13 +405,6 @@ play_B:
         out     61h, al         ; Send new value.
         mov     bx, 25 
         ret
-waiting:
-    mov ah, 86
-    mov cx, 2000
-    mov dx, 0
-    int 0x15
-    ret
-	
 play_D:
         mov     al, 182         ; Prepare the speaker for the
         out     43h, al         ;  note.
@@ -405,8 +452,7 @@ SECTION .data
     score: dw 5                 ; start score at 2 [0, 9]
     ball_x: dw 40               ; even element of [0, 78]
     ball_y: dw 8                ; [0, 23]
-    ball_dx: dw 1               ; {-2, -1, 0, 1, 2}
-    ball_dy: dw 1               ; {-4, -2, 0, 2, 4}
+    ball_dir: dw 0
     comput_paddle_loc: dw 15    ; [0, 22]
     task_main_str: db "I am task MAIN", 13, 10, 0
     screen: times 1000 dw 0
