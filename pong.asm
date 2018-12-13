@@ -7,11 +7,12 @@ main:
     mov     byte [task_status], 1               ; set main task to active
     mov     ah, 0x0
     mov     al, 0x1
-    int     0x10                    ; set video to text mode
+    int     0x10                                ; set video to text mode
 
-    lea     di, [task_a]                        ; create task a
+    lea     di, [task_a]
     call    spawn_new_task
-    lea     di, [task_b]                        ; create task b
+
+    lea     di, [task_b]
     call    spawn_new_task
 
     lea     di, [task_c]
@@ -31,6 +32,8 @@ main:
     call    yield                               ; we are done printing, let another task know they can print
     jmp     .loop_forever_main
     ; does not terminate or return
+
+; spawns a new task (duh)
 ; di should contain the address of the function to run for a task
 spawn_new_task:
     lea     bx, [stack_pointers]                ; get the location of the stack pointers
@@ -68,6 +71,8 @@ spawn_new_task:
     add     bx, [current_task]
     mov     sp, [bx]
     ret
+
+; To be called within a task to let another task take over.
 yield:
     pusha                                       ; push registers
     pushf                                       ; push flags
@@ -93,64 +98,52 @@ yield:
     popf
     popa
     ret
+
+; updates the paddle position when the key is hit.
 task_a:
 .loop_forever_1:
     call    update_game
     call    yield
     jmp     .loop_forever_1
-    ; does not terminate or return
+
+; printing the screen
 task_b:
 .loop_forever_2:
     call    print_screen
     ;call    Play_Sound
     call    yield
     jmp     .loop_forever_2
-    ; does not terminate or return
+
+; plays the music
 task_c:
 .loop_forever_3:
     call  Play_Sound
     call  yield
     jmp  .loop_forever_3
-; takes a char to print in dx
-; no return value
+
+; updates the score when someone gets a point.
+; restarts the game (zeros the scores) when someone wins
 task_score_keeper:
 .loop_forever_4:
     call    keep_score
     call    yield
     jmp     .loop_forever_4
 
+; runs the ai
 task_run_ai:
 .loop_forever_5:
     call    run_ai
     call    yield
     jmp     .loop_forever_5
 
+; deal with paddle collisions
 task_paddle_collisions:
 .loop_forever_6:
     call    deal_with_paddle_collisions
     call    yield
     jmp     .loop_forever_6
 
-putchar:
-    mov     ax, dx          ; call interrupt x10 sub interrupt xE
-    mov     ah, 0x0E
-    mov     cx, 1
-    int     0x10
-    ret
-;takes an address to write to in di
-;writes to address until a newline is encountered
-;returns nothing
-putstring:
-    cmp     byte [di], 0        ; see if the current byte is a null terminator
-    je      .done               ; nope keep printing
-.continue:
-    mov     dl, [di]            ; grab the next character of the string
-    mov     dh, 0               ; print it
-    call    putchar
-    inc     di                  ; move to the next character
-    jmp     putstring
-.done:
-    ret
+
 ; Easy function: printing the board.
 ; run through all the variables and print them out.
 ; how hard could that be?
@@ -233,6 +226,8 @@ print_screen:
     mov     cx, 5
     int     0x15
     ret
+
+; prints the score
 global print_score
 print_score:
     mov     bx, 10                    ; you can assume that es has not been tampered with.
@@ -276,8 +271,9 @@ print_score:
     add     cx, [computer_score]
     add     bx, 4
     mov     word [screen+bx], cx
-
     ret
+
+; prints the paddles
 global print_players
 print_players:
     mov     ax, 80                  ; multiplying to find the correct location to put the value.
@@ -300,6 +296,8 @@ print_players:
     add     bx, 80
     mov     word [screen+bx], 0x07db
     ret
+
+; prints the ball
 global print_ball
 print_ball:
     mov     ax, 80                      ; multiplying to find the correct location to put the value.
@@ -336,13 +334,9 @@ copy_to_screen:
     jmp     .while
 .end:
     ret
-; need a function to move the ball one place.
-; if the ball hits a wall, then check what wall it is.
-; if it's the wall on the back side, then end the game.
-; if it's a top or bottom wall, then just change the y direction.
-; if it hits a paddle, change the x or y appriately.
-; . . . this is the hard function.
-; just update the paddles for now.
+
+
+; updates paddle positions for pressing keys.
 ; somewhat addapted from https://stackoverflow.com/questions/13143774/how-to-read-key-without-waiting-for-it-assembly-8086
 global update_game
 update_game:
@@ -390,6 +384,7 @@ a_not_pressed:
 end_update:
     ret                     ; at the very least.
 
+; Checks if there are any score developements to be updated and updates them.
 global keep_score
 keep_score:
     ; first update the player's score.
@@ -414,7 +409,9 @@ keep_score:
 .end_keep_score:
     ret
 
-
+; operates the AI paddle.
+; every 17 moves, it skips. (so it's not invincible)
+; otherwise, it just follows the ball.
 global run_ai
 run_ai:
     ; if the paddle is above the dot, move down,
@@ -444,6 +441,8 @@ run_ai:
 .end_run_ai:
     ret
 
+; checks to see if the ball is near a paddle.
+; if it is, then the ball is deflected.
 global deal_with_paddle_collisions
 deal_with_paddle_collisions:
     ; Check to see if it could be hitting player's paddle.
@@ -511,6 +510,7 @@ deal_with_paddle_collisions:
 .end_func:
     ret
 
+; plays the music.
 global Play_Sound
 Play_Sound:
     call play_B
@@ -615,6 +615,7 @@ play_A:
         out     61h, al         ; Send new value.
         mov     bx, 25
         ret
+
 SECTION .data
     ai_round_num: dw 0          ;
     player_paddle_loc: dw 12    ; [0, 22]
