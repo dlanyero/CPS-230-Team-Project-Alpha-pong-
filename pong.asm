@@ -235,39 +235,45 @@ print_screen:
     ret
 global print_score
 print_score:
-    mov     bx, 60                    ; you can assume that es has not been tampered with.
+    mov     bx, 10                    ; you can assume that es has not been tampered with.
                                       ; also assume that the video text mode has been set.
-    mov     word [screen+bx], 0x0753  ; SCORE: --> {0x53, 0x43, 0x4f, 0x52, 0x45, 0x7c, space}
+    mov     word [screen+bx], 0x0748  ; Player: --> {0x53, 0x43, 0x4f, 0x52, 0x45, 0x7c, space}  player
     add     bx, 2
-    mov     word [screen+bx], 0x0743  ; no blink. black background, non-bright white font.
+    mov     word [screen+bx], 0x0775  ; no blink. black background, non-bright white font.
     add     bx, 2
-    mov     word [screen+bx], 0x074f
+    mov     word [screen+bx], 0x076d
     add     bx, 2
-    mov     word [screen+bx], 0x0752
+    mov     word [screen+bx], 0x0761
     add     bx, 2
-    mov     word [screen+bx], 0x0745
-    add     bx, 2
-    mov     word [screen+bx], 0x077c
-    mov     cx, 0x0730              ; the '0' character
-    add     cx, [computer_score]
-    add     bx, 4
-    mov     word [screen+bx], cx
-
-    mov     bx, 20                    ; you can assume that es has not been tampered with.
-                                      ; also assume that the video text mode has been set.
-    mov     word [screen+bx], 0x0753  ; SCORE: --> {0x53, 0x43, 0x4f, 0x52, 0x45, 0x7c, space}
-    add     bx, 2
-    mov     word [screen+bx], 0x0743  ; no blink. black background, non-bright white font.
-    add     bx, 2
-    mov     word [screen+bx], 0x074f
-    add     bx, 2
-    mov     word [screen+bx], 0x0752
-    add     bx, 2
-    mov     word [screen+bx], 0x0745
+    mov     word [screen+bx], 0x076e
     add     bx, 2
     mov     word [screen+bx], 0x077c
     mov     cx, 0x0730              ; the '0' character
     add     cx, [player_score]
+    add     bx, 4
+    mov     word [screen+bx], cx
+
+    mov     bx,  50                   ; you can assume that es has not been tampered with.
+                                      ; also assume that the video text mode has been set.
+    mov     word [screen+bx], 0x0743  ; SCORE: --> {0x53, 0x43, 0x4f, 0x52, 0x45, 0x7c, space}
+    add     bx, 2
+    mov     word [screen+bx], 0x076f  ; no blink. black background, non-bright white font.
+    add     bx, 2
+    mov     word [screen+bx], 0x076d
+    add     bx, 2
+    mov     word [screen+bx], 0x0770
+    add     bx, 2
+    mov     word [screen+bx], 0x0775
+    add     bx, 2
+    mov     word [screen+bx], 0x0774
+    add     bx, 2
+    mov     word [screen+bx], 0x0765
+    add     bx, 2
+    mov     word [screen+bx], 0x0772
+    add     bx, 2
+    mov     word [screen+bx], 0x077c
+    mov     cx, 0x0730              ; the '0' character
+    add     cx, [computer_score]
     add     bx, 4
     mov     word [screen+bx], cx
 
