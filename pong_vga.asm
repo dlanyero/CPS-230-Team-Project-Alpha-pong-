@@ -6,8 +6,8 @@ main:
     mov ds, ax
     mov     byte [task_status], 1               ; set main task to active
     mov     ah, 0x0
-    mov     al, 0x1
-    int     0x10                    ; set video to text mode
+    mov     al, 0x13
+    int     0x10                               ; set videa to vga mode
 
     lea     di, [task_a]                        ; create task a
     call    spawn_new_task
@@ -137,20 +137,7 @@ putchar:
     mov     cx, 1
     int     0x10
     ret
-;takes an address to write to in di
-;writes to address until a newline is encountered
-;returns nothing
-putstring:
-    cmp     byte [di], 0        ; see if the current byte is a null terminator
-    je      .done               ; nope keep printing
-.continue:
-    mov     dl, [di]            ; grab the next character of the string
-    mov     dh, 0               ; print it
-    call    putchar
-    inc     di                  ; move to the next character
-    jmp     putstring
-.done:
-    ret
+
 ; Easy function: printing the board.
 ; run through all the variables and print them out.
 ; how hard could that be?
@@ -235,79 +222,90 @@ print_screen:
     ret
 global print_score
 print_score:
-    mov     bx, 60                    ; you can assume that es has not been tampered with.
+    mov     bx, 280                    ; you can assume that es has not been tampered with.
                                       ; also assume that the video text mode has been set.
-    mov     word [screen+bx], 0x0753  ; SCORE: --> {0x53, 0x43, 0x4f, 0x52, 0x45, 0x7c, space}
-    add     bx, 2
-    mov     word [screen+bx], 0x0743  ; no blink. black background, non-bright white font.
-    add     bx, 2
-    mov     word [screen+bx], 0x074f
-    add     bx, 2
-    mov     word [screen+bx], 0x0752
-    add     bx, 2
-    mov     word [screen+bx], 0x0745
-    add     bx, 2
-    mov     word [screen+bx], 0x077c
-    mov     cx, 0x0730              ; the '0' character
-    add     cx, [computer_score]
-    add     bx, 4
-    mov     word [screen+bx], cx
+    mov     cx, [computer_score]
+    mov     ax, 10
+    mul     cx
+.while1:
+    cmp     ax, 0
+    je      .end_while1
+    mov     word [screen+bx], 7     ; make square white.
+    inc     bx
+    jmp .while1
+.end_while1:
 
-    mov     bx, 20                    ; you can assume that es has not been tampered with.
+    mov     bx, 40                    ; you can assume that es has not been tampered with.
                                       ; also assume that the video text mode has been set.
-    mov     word [screen+bx], 0x0753  ; SCORE: --> {0x53, 0x43, 0x4f, 0x52, 0x45, 0x7c, space}
-    add     bx, 2
-    mov     word [screen+bx], 0x0743  ; no blink. black background, non-bright white font.
-    add     bx, 2
-    mov     word [screen+bx], 0x074f
-    add     bx, 2
-    mov     word [screen+bx], 0x0752
-    add     bx, 2
-    mov     word [screen+bx], 0x0745
-    add     bx, 2
-    mov     word [screen+bx], 0x077c
-    mov     cx, 0x0730              ; the '0' character
-    add     cx, [player_score]
-    add     bx, 4
-    mov     word [screen+bx], cx
-
+    mov     cx, [player_score]
+    mov     ax, 10
+    mul     cx
+.while2:
+    cmp     ax, 0
+    je      .end_while2
+    mov     word [screen+bx], 7     ; make square white.
+    inc     bx
+    jmp .while2
+.end_while2:
     ret
+
+
 global print_players
 print_players:
-    mov     ax, 80                  ; multiplying to find the correct location to put the value.
-    mov     dx, word [player_paddle_loc]
-    imul    ax, dx
+    mov     cx, 320                 ; width of the screen.
+                                    ; need to print every 320 spaces.
+    mov     ax, [player_paddle_loc]
+    mov     bx, 5
+    mul     bx
+    mul     cx                      ; now correct starting location is in ax
     mov     bx, ax
-    mov     word [screen+bx], 0x07db          ; 0xa6 --> block
-    add     bx, 80
-    mov     word [screen+bx], 0x07db
-    add     bx, 80
-    mov     word [screen+bx], 0x07db
-    mov     ax, 80                  ; multiplying to find the correct location to put the value.
-    mov     dx, word [comput_paddle_loc]
-    imul    ax, dx
+    mov     cx, 15
+.while_player:
+    mov     word [screen+bx], 7
+    add     bx, 320
+    dec     cx
+    cmp     cx, 0
+    je      .end_while_player
+    jmp     .while_player
+
+    ; now for the computer.
+    mov     cx, 320                 ; width of the screen.
+                                    ; need to print every 320 spaces.
+    mov     ax, [comput_paddle_loc]
+    mov     bx, 5
+    mul     bx
+    mul     cx
+    add     ax, 319                 ; now correct starting location is in ax
     mov     bx, ax
-    add     bx, 78
-    mov     word [screen+bx], 0x07db          ; 0xdb --> block
-    add     bx, 80
-    mov     word [screen+bx], 0x07db
-    add     bx, 80
-    mov     word [screen+bx], 0x07db
+    mov     cx, 15
+.while_computer:
+    mov     word [screen+bx], 7
+    add     bx, 320
+    dec     cx
+    cmp     cx, 0
+    je      .end_while_computer
+    jmp     .while_computer
+.end_while_computer:
     ret
+
+
 global print_ball
 print_ball:
-    mov     ax, 80                      ; multiplying to find the correct location to put the value.
+    mov     ax, 1600                   ; multiplying to find the correct location to put the value. 320 x 5
     mov     dx, word [ball_y]
     imul    ax, dx
     mov     bx, ax                      ; y
-    add     bx, [ball_x]                ; x
-    mov     word [screen+bx], 0x07db    ; print (x, y)
+    mov     dx, [ball_x]                ; calculating x
+    mov     ax, 5
+    imul    ax, dx                      ; x
+    add     bx, ax
+    mov     word [screen+bx], 7    ; print (x, y)
     ret
 reset_drawing_array:
     mov     cx, 0
     xor     bx, bx
 .while:
-    cmp     cx, 1000
+    cmp     cx, 64000
     je      .end
     mov     word [screen + bx], 0
     add     bx, 2
@@ -316,7 +314,7 @@ reset_drawing_array:
 .end:
     ret
 copy_to_screen:
-    mov     ax, 0xB800
+    mov     ax, 0xA000
     mov     es, ax
     mov     cx, 0
     xor     bx, bx
@@ -413,13 +411,8 @@ global run_ai
 run_ai:
     ; if the paddle is above the dot, move down,
     ; if it's below, move up.
-    ; every once in a while, skip so it's not invincible.
-    inc     word [ai_round_num]
-    cmp     word [ai_round_num], 17
-    jne     .do_ai
-    mov     word [ai_round_num], 0
-    jmp     .end_run_ai
-.do_ai:
+    ; later you can make a slowing variable that cycles through move/don't-move.
+    ; actually 79 - x is it's distance from the edge. Whatever just make something stupid for now . . .
     mov     cx, [comput_paddle_loc]
     cmp     word [ball_y], cx
     jl      .move_down                                   ; if the ball is lower than the paddle
@@ -477,6 +470,7 @@ deal_with_paddle_collisions:
 
 .check_for_computer_collisions:
     mov     cx, [comput_paddle_loc]
+    sub     cx, 1
     cmp     word [ball_y], cx
     je      .computer_collision
     inc     cx
@@ -510,48 +504,59 @@ Play_Sound:
     call play_B
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_B
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_B
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_B
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_B
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_B
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_D
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_G
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_A
     call mywait
     call yield
-
+    ;jmp .pause1
+    ;jmp .pause2
     call play_B
     call mywait
     call yield
+    ;jmp .pause1
+    ;jmp .pause2
     ret
 mywait:
-;        mov     ah, 0x86
-;        mov     dx, 20
-;        mov     cx, 0
-;        int     0x15
+        mov     ah, 0x86
+        mov     dx, 0
+        mov     cx, 1
+        int     0x15
         ret
 play_B:
         mov     al, 182         ; Prepare the speaker for the
@@ -610,18 +615,17 @@ play_A:
         mov     bx, 25
         ret
 SECTION .data
-    ai_round_num: dw 0          ;
-    player_paddle_loc: dw 12    ; [0, 22]
+    player_paddle_loc: dw 12    ; [0, 38]
     player_score: dw 0          ;
     delta_player_score: dw 0    ;
     delta_computer_score: dw 0  ;
     computer_score: dw 0        ;
     ball_x: dw 40               ; even element of [0, 78]
     ball_y: dw 8                ; [0, 23]
-    ball_dir: dw 2
+    ball_dir: dw 0
     comput_paddle_loc: dw 15    ; [0, 22]
     task_main_str: db "I am task MAIN", 13, 10, 0
-    screen: times 1000 dw 0
+    screen: times 64000 dw 0
     current_task: dw 0          ; must always be a multiple of 2
     stacks: times (256 * 8) db 0 ; 31 fake stacks of size 256 bytes
     task_status: times 8 dw 0  ; 0 means inactive, 1 means active
@@ -633,3 +637,14 @@ SECTION .data
                     dw stacks + (256 * 5)
                     dw stacks + (256 * 6)
                     dw stacks + (256 * 7)
+
+;.change_dir_left:
+;    cmp     word [ball_dir], 3
+;    je      .go_se
+;    jmp     .go_ne
+
+
+;.change_dir_right
+;    cmp     word [ball_dir], 1
+;    je      .go_nw
+;    jmp     .go_sw
