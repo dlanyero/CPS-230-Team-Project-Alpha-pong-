@@ -8,13 +8,22 @@ main:
     mov     ah, 0x0
     mov     al, 0x1
     int     0x10                    ; set video to text mode
-    
+
     lea     di, [task_a]                        ; create task a
     call    spawn_new_task
     lea     di, [task_b]                        ; create task b
     call    spawn_new_task
-    
+
     lea     di, [task_c]
+    call    spawn_new_task
+
+    lea     di, [task_score_keeper]
+    call    spawn_new_task
+
+    lea     di, [task_run_ai]
+    call    spawn_new_task
+
+    lea     di, [task_paddle_collisions]
     call    spawn_new_task
     ; a completely useless something
 .loop_forever_main:                             ; have main print for eternity
@@ -104,6 +113,24 @@ task_c:
     jmp  .loop_forever_3
 ; takes a char to print in dx
 ; no return value
+task_score_keeper:
+.loop_forever_4:
+    call    keep_score
+    call    yield
+    jmp     .loop_forever_4
+
+task_run_ai:
+.loop_forever_5:
+    call    run_ai
+    call    yield
+    jmp     .loop_forever_5
+
+task_paddle_collisions:
+.loop_forever_6:
+    call    deal_with_paddle_collisions
+    call    yield
+    jmp     .loop_forever_6
+
 putchar:
     mov     ax, dx          ; call interrupt x10 sub interrupt xE
     mov     ah, 0x0E
@@ -162,11 +189,11 @@ print_screen:
     jmp     .unknown_dir
 .unknown_dir:
     cmp     word [ball_x], 0
-    je      .change_dir_left
+    je      .hit_left
     cmp     word [ball_y], 0
     je      .change_dir_top
     cmp     word [ball_x], 79
-    jge     .change_dir_right
+    jge     .hit_right               ; have this call add point to player
     cmp     word [ball_y], 24
     jge     .change_dir_bottom
     ; TODO add detection logic for paddles here
@@ -175,14 +202,12 @@ print_screen:
     cmp     word [ball_dir], 0
     je      .go_se
     jmp     .go_sw
-.change_dir_left:
-    cmp     word [ball_dir], 3
-    je      .go_se
-    jmp     .go_ne
-.change_dir_right:
-    cmp     word [ball_dir], 1
-    je      .go_nw
-    jmp     .go_sw
+.hit_left:
+    mov     word [delta_computer_score], 1
+    jmp     .reset_ball
+.hit_right:
+    mov     word [delta_player_score], 1
+    jmp     .reset_ball
 .change_dir_bottom:
     cmp     word [ball_dir], 2
     je      .go_nw
@@ -199,6 +224,9 @@ print_screen:
 .go_sw:
     mov     word [ball_dir], 2
     jmp     .no_change_needed
+.reset_ball:
+    mov     word [ball_x], 39
+    mov     word [ball_y], 11
 .no_change_needed:
     mov     ah, 0x86
     mov     dx, 0
@@ -221,9 +249,28 @@ print_score:
     add     bx, 2
     mov     word [screen+bx], 0x077c
     mov     cx, 0x0730              ; the '0' character
-    add     cx, [score]
+    add     cx, [computer_score]
     add     bx, 4
     mov     word [screen+bx], cx
+
+    mov     bx, 20                    ; you can assume that es has not been tampered with.
+                                      ; also assume that the video text mode has been set.
+    mov     word [screen+bx], 0x0753  ; SCORE: --> {0x53, 0x43, 0x4f, 0x52, 0x45, 0x7c, space}
+    add     bx, 2
+    mov     word [screen+bx], 0x0743  ; no blink. black background, non-bright white font.
+    add     bx, 2
+    mov     word [screen+bx], 0x074f
+    add     bx, 2
+    mov     word [screen+bx], 0x0752
+    add     bx, 2
+    mov     word [screen+bx], 0x0745
+    add     bx, 2
+    mov     word [screen+bx], 0x077c
+    mov     cx, 0x0730              ; the '0' character
+    add     cx, [player_score]
+    add     bx, 4
+    mov     word [screen+bx], cx
+
     ret
 global print_players
 print_players:
@@ -311,13 +358,15 @@ process_key:
 w_not_pressed:
     cmp     al, 115              ; s
     jne     s_not_pressed
-    mov     dx, [comput_paddle_loc] ;So this is how you adjust stuff. You temprarily move it into a register and increament the register and them move it back to where is it supposed to be. 
+    mov     dx, [comput_paddle_loc] ;So this is how you adjust stuff. You temprarily move it into a register and increament the register and them move it back to where is it supposed to be.
     add     dx, 1
     mov     [comput_paddle_loc], dx
     jmp     end_update
 s_not_pressed:
     cmp     al, 113              ; q
-    jne     q_not_pressed
+    jne     q_not_pressed                   ; add a cmp statement to test for extreems.  ;here now
+    cmp     word [player_paddle_loc], 0     ; maybe not what you want to test.
+    je      end_update
     mov     dx, [player_paddle_loc]
     sub     dx, 1
     mov     [player_paddle_loc], dx
@@ -325,6 +374,8 @@ s_not_pressed:
 q_not_pressed:
     cmp     al, 97              ; a
     jne     a_not_pressed
+    cmp     word [player_paddle_loc], 22    ; check paddle bounds.
+    je      end_update
     mov     dx, [player_paddle_loc]
     add     dx, 1
     mov     [player_paddle_loc], dx
@@ -332,6 +383,124 @@ q_not_pressed:
 a_not_pressed:
 end_update:
     ret                     ; at the very least.
+
+global keep_score
+keep_score:
+    ; first update the player's score.
+    mov     cx, [player_score]
+    add     cx, [delta_player_score]
+    mov     word [player_score], cx
+    mov     word [delta_player_score], 0
+    ; now update the computer's score
+    mov     cx, [computer_score]
+    add     cx, [delta_computer_score]
+    mov     word [computer_score], cx
+    mov     word [delta_computer_score], 0
+    ; now check for game ending
+    cmp     word [player_score], 5
+    je      .clear_scores
+    cmp     word [computer_score], 5
+    je      .clear_scores
+    jmp     .end_keep_score
+.clear_scores:
+    mov     word [player_score], 0
+    mov     word [computer_score], 0
+.end_keep_score:
+    ret
+
+
+global run_ai
+run_ai:
+    ; if the paddle is above the dot, move down,
+    ; if it's below, move up.
+    ; later you can make a slowing variable that cycles through move/don't-move.
+    ; actually 79 - x is it's distance from the edge. Whatever just make something stupid for now . . .
+    mov     cx, [comput_paddle_loc]
+    cmp     word [ball_y], cx
+    jl      .move_down                                   ; if the ball is lower than the paddle
+    cmp     word [comput_paddle_loc], 22                 ; move 'higher' if it's not already at the top
+    je      .end_run_ai
+    mov     cx, [comput_paddle_loc]
+    add     cx, 1
+    mov     [comput_paddle_loc], cx
+    jmp     .end_run_ai
+.move_down:
+    cmp     word [comput_paddle_loc], 0
+    je      .end_run_ai
+    mov     cx, [comput_paddle_loc]
+    sub     cx, 1
+    mov     [comput_paddle_loc], cx
+.end_run_ai:
+    ret
+
+global deal_with_paddle_collisions
+deal_with_paddle_collisions:
+    ; Check to see if it could be hitting player's paddle.
+    cmp     word [ball_x], 1
+    je      .check_for_player_collisions
+    cmp     word [ball_x], 78
+    jne     .no_collisions
+    jmp     .check_for_computer_collisions
+.no_collisions:
+    jmp     .end_func
+.check_for_player_collisions:
+    mov     cx, [player_paddle_loc]
+    cmp     word [ball_y], cx
+    je      .player_collision
+    inc     cx
+    cmp     word [ball_y], cx
+    je      .player_collision
+    inc     cx
+    cmp     word [ball_y], cx
+    je      .player_collision
+    jmp     .end_func                   ; no collisions
+
+.player_collision:
+    cmp     word [ball_dir], 3          ; going nw
+    je      .go_ne                      ; I swoped these from how they were.
+    jmp     .go_se
+.go_se:
+    inc     word [ball_x]
+    dec     word [ball_y]
+    mov     word [ball_dir], 1
+    jmp     .end_func
+.go_ne:
+    inc     word [ball_x]
+    inc     word [ball_y]
+    mov     word [ball_dir], 0
+    jmp     .end_func
+
+.check_for_computer_collisions:
+    mov     cx, [comput_paddle_loc]
+    sub     cx, 1
+    cmp     word [ball_y], cx
+    je      .computer_collision
+    inc     cx
+    cmp     word [ball_y], cx
+    je      .computer_collision
+    inc     cx
+    cmp     word [ball_y], cx
+    je      .computer_collision
+    jmp     .end_func                   ; no collisions
+
+.computer_collision:
+    cmp     word [ball_dir], 1          ; going se
+    je      .go_sw                      ; I swopped these from how they were.
+    jmp     .go_nw
+.go_nw:
+    dec     word [ball_x]               ; undo a move
+    inc     word [ball_y]
+    mov     word [ball_dir], 3
+    jmp     .end_func
+.go_sw:
+    dec     word [ball_x]               ; undo a move. go_nw one step
+    dec     word [ball_y]
+    mov     word [ball_dir], 2
+    jmp     .end_func
+
+.end_func:
+    ret
+
 global Play_Sound
 Play_Sound:
     call play_B
@@ -388,7 +557,7 @@ Play_Sound:
 mywait:
         mov     ah, 0x86
         mov     dx, 0
-        mov     cx, 5
+        mov     cx, 1
         int     0x15
         ret
 play_B:
@@ -398,12 +567,12 @@ play_B:
                                 ;  for middle C.
         out     42h, al         ; Output low byte.
         mov     al, ah          ; Output high byte.
-        out     42h, al 
+        out     42h, al
         in      al, 61h         ; Turn on note (get value from
                                 ;  port 61h).
         or      al, 00000011b   ; Set bits 1 and 0.
         out     61h, al         ; Send new value.
-        mov     bx, 25 
+        mov     bx, 25
         ret
 play_D:
         mov     al, 182         ; Prepare the speaker for the
@@ -412,12 +581,12 @@ play_D:
                                 ;  for middle C.
         out     42h, al         ; Output low byte.
         mov     al, ah          ; Output high byte.
-        out     42h, al 
+        out     42h, al
         in      al, 61h         ; Turn on note (get value from
                                 ;  port 61h).
         or      al, 00000011b   ; Set bits 1 and 0.
         out     61h, al         ; Send new value.
-        mov     bx, 25 
+        mov     bx, 25
         ret
 play_G:
         mov     al, 182         ; Prepare the speaker for the
@@ -426,12 +595,12 @@ play_G:
                                 ;  for middle C.
         out     42h, al         ; Output low byte.
         mov     al, ah          ; Output high byte.
-        out     42h, al 
+        out     42h, al
         in      al, 61h         ; Turn on note (get value from
                                 ;  port 61h).
         or      al, 00000011b   ; Set bits 1 and 0.
         out     61h, al         ; Send new value.
-        mov     bx, 25 
+        mov     bx, 25
         ret
 play_A:
         mov     al, 182         ; Prepare the speaker for the
@@ -440,16 +609,19 @@ play_A:
                                 ;  for middle C.
         out     42h, al         ; Output low byte.
         mov     al, ah          ; Output high byte.
-        out     42h, al 
+        out     42h, al
         in      al, 61h         ; Turn on note (get value from
                                 ;  port 61h).
         or      al, 00000011b   ; Set bits 1 and 0.
         out     61h, al         ; Send new value.
-        mov     bx, 25 
+        mov     bx, 25
         ret
 SECTION .data
     player_paddle_loc: dw 12    ; [0, 22]
-    score: dw 5                 ; start score at 2 [0, 9]
+    player_score: dw 0          ;
+    delta_player_score: dw 0    ;
+    delta_computer_score: dw 0  ;
+    computer_score: dw 0        ;
     ball_x: dw 40               ; even element of [0, 78]
     ball_y: dw 8                ; [0, 23]
     ball_dir: dw 0
@@ -467,3 +639,14 @@ SECTION .data
                     dw stacks + (256 * 5)
                     dw stacks + (256 * 6)
                     dw stacks + (256 * 7)
+
+;.change_dir_left:
+;    cmp     word [ball_dir], 3
+;    je      .go_se
+;    jmp     .go_ne
+
+
+;.change_dir_right
+;    cmp     word [ball_dir], 1
+;    je      .go_nw
+;    jmp     .go_sw
